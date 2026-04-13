@@ -72,14 +72,28 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-card card"><i class="bi bi-currency-dollar"></i><div><span>Ventas Mes</span><h3 id="stat-month">0</h3></div></div>
-                <div class="stat-card card"><i class="bi bi-graph-up"></i><div><span>Ventas Año</span><h3 id="stat-year">0</h3></div></div>
+                <div class="stat-card card"><i class="bi bi-currency-dollar"></i><div><span>Ingresos Totales</span><h3 id="stat-month">$0</h3></div></div>
+                <div class="stat-card card"><i class="bi bi-receipt"></i><div><span>Total Ventas</span><h3 id="stat-year">0</h3></div></div>
+                <div class="stat-card card"><i class="bi bi-graph-up-arrow"></i><div><span>Ticket Promedio</span><h3 id="stat-avg-ticket">$0</h3></div></div>
                 <div class="stat-card card"><i class="bi bi-star"></i><div><span>Top Producto</span><h3 id="stat-top-p">---</h3></div></div>
             </div>
             <div class="charts-container">
                 <div class="chart-box card"><h3>Tendencia de Ventas</h3><canvas id="lineChart"></canvas></div>
                 <div class="chart-box card"><h3>Productos más Vendidos</h3><canvas id="pieChart"></canvas></div>
+                <div class="chart-box card"><h3>Ventas por Día de la Semana</h3><canvas id="weekdayChart"></canvas></div>
                 <div class="chart-box card full-width"><h3>Top Clientes (Inversión)</h3><canvas id="barChart"></canvas></div>
+            </div>
+
+            <!-- Fila inferior: actividad reciente + alerta stock bajo -->
+            <div class="bottom-grid">
+                <div class="card table-card">
+                    <h3><i class="bi bi-clock-history"></i> Actividad Reciente</h3>
+                    <div id="recentSalesTable" class="mini-table"></div>
+                </div>
+                <div class="card table-card">
+                    <h3><i class="bi bi-exclamation-triangle" style="color:#e0a800"></i> Stock Bajo</h3>
+                    <div id="lowStockTable" class="mini-table"></div>
+                </div>
             </div>
         </section>
 

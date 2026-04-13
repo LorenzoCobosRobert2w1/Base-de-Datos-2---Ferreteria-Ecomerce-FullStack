@@ -78,7 +78,6 @@ function resetForms() {
 /** 2. ESTADÍSTICAS **/
 async function loadStats(startDate = '', endDate = '') {
     try {
-        // Armamos la URL con las fechas si el usuario las eligió
         let url = '/api/stats';
         if (startDate && endDate) {
             url += `?start=${startDate}&end=${endDate}`;
@@ -87,11 +86,15 @@ async function loadStats(startDate = '', endDate = '') {
         const res = await fetch(url);
         const data = await res.json();
         
-        document.getElementById('stat-month').textContent = `$${(data.totalRevenue || 0).toLocaleString()}`;
+        document.getElementById('stat-month').textContent = `$${(data.totalRevenue || 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         document.getElementById('stat-year').textContent = data.totalSalesCount || 0;
         document.getElementById('stat-top-p').textContent = data.topProduct || '---';
+        const avgEl = document.getElementById('stat-avg-ticket');
+        if (avgEl) avgEl.textContent = `$${(data.avgTicket || 0).toFixed(2)}`;
         
         renderCharts(data);
+        renderRecentSales(data.recentSales || []);
+        renderLowStock(data.lowStock || []);
     } catch (e) { console.error("Error stats:", e); }
 }
 
@@ -110,7 +113,9 @@ document.getElementById('btn-filter-dates')?.addEventListener('click', () => {
 
 function renderCharts(data) {
     Object.keys(charts).forEach(k => charts[k].destroy());
-    const config = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+    charts = {};
+    const baseOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+    const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
     const lineCtx = document.getElementById('lineChart');
     if (lineCtx) {
@@ -118,9 +123,10 @@ function renderCharts(data) {
             type: 'line',
             data: { 
                 labels: (data.lineData || []).map(d => d._id), 
-                datasets: [{ label: 'Ventas ($)', data: (data.lineData || []).map(d => d.total), borderColor: '#f26522', tension: 0.4 }]
+                datasets: [{ label: 'Ingresos ($)', data: (data.lineData || []).map(d => d.total), 
+                    borderColor: '#f26522', backgroundColor: 'rgba(242,101,34,0.08)', tension: 0.4, fill: true, pointRadius: 4 }]
             },
-            options: config
+            options: { ...baseOpts, plugins: { legend: { display: true } } }
         });
     }
 
@@ -130,9 +136,28 @@ function renderCharts(data) {
             type: 'doughnut',
             data: { 
                 labels: (data.pieData || []).map(d => d._id), 
-                datasets: [{ data: (data.pieData || []).map(d => d.value), backgroundColor: ['#f26522', '#007bff', '#28a745', '#ffc107'] }]
+                datasets: [{ data: (data.pieData || []).map(d => d.value), 
+                    backgroundColor: ['#f26522','#007bff','#28a745','#ffc107','#6f42c1'] }]
             },
-            options: { ...config, plugins: { legend: { display: true, position: 'bottom' } } }
+            options: { ...baseOpts, plugins: { legend: { display: true, position: 'bottom' } } }
+        });
+    }
+
+    // NUEVO: Gráfico por día de la semana
+    const weekCtx = document.getElementById('weekdayChart');
+    if (weekCtx) {
+        // Armar array completo de 7 días con valores 0 por defecto
+        const weekValues = Array(7).fill(0);
+        (data.salesByWeekday || []).forEach(d => { weekValues[d._id - 1] = d.total; });
+        charts.weekday = new Chart(weekCtx, {
+            type: 'bar',
+            data: {
+                labels: DAYS,
+                datasets: [{ label: 'Ingresos ($)', data: weekValues,
+                    backgroundColor: weekValues.map((_, i) => i === 5 || i === 0 ? '#007bff' : '#f26522'),
+                    borderRadius: 6 }]
+            },
+            options: { ...baseOpts, plugins: { legend: { display: false } } }
         });
     }
 
@@ -142,11 +167,38 @@ function renderCharts(data) {
             type: 'bar',
             data: {
                 labels: (data.topCustomers || []).map(c => c._id || 'Anónimo'),
-                datasets: [{ label: 'Inversión ($)', data: (data.topCustomers || []).map(c => c.invertido), backgroundColor: '#007bff' }]
+                datasets: [{ label: 'Invertido ($)', data: (data.topCustomers || []).map(c => c.invertido), 
+                    backgroundColor: '#007bff', borderRadius: 6 }]
             },
-            options: config
+            options: { ...baseOpts, plugins: { legend: { display: true } } }
         });
     }
+}
+
+function renderRecentSales(sales) {
+    const el = document.getElementById('recentSalesTable');
+    if (!el) return;
+    if (!sales.length) { el.innerHTML = '<div class="mini-empty">Sin ventas registradas aún.</div>'; return; }
+    el.innerHTML = sales.map(s => {
+        const fecha = new Date(s.fecha).toLocaleDateString('es-AR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+        const cliente = s.cliente?.nombre_completo || 'Anónimo';
+        return `<div class="mini-row">
+            <span class="label"><strong>${cliente}</strong><br><small style="color:var(--text-muted)">${fecha}</small></span>
+            <span class="value">$${(s.total || 0).toFixed(2)}</span>
+        </div>`;
+    }).join('');
+}
+
+function renderLowStock(products) {
+    const el = document.getElementById('lowStockTable');
+    if (!el) return;
+    if (!products.length) { el.innerHTML = '<div class="mini-empty">✅ Todo el inventario está bien abastecido.</div>'; return; }
+    el.innerHTML = products.map(p => `
+        <div class="mini-row">
+            <span class="label">${p.nombre}</span>
+            <span class="badge-stock ${p.stock <= 2 ? 'critical' : ''}">${p.stock} unid.</span>
+        </div>
+    `).join('');
 }
 
 /** 3. PRODUCTOS **/
@@ -316,13 +368,31 @@ window.addToCart = (id) => {
     renderCart();
 };
 
+window.removeFromCart = (id) => {
+    const idx = cart.findIndex(x => x.id === id);
+    if (idx !== -1) cart.splice(idx, 1);
+    renderCart();
+};
+
 function renderCart() {
     const c = document.getElementById('cartItems');
     if (!c) return;
     let total = 0;
     const items = cart.map(i => {
         total += i.precio * i.cantidad;
-        return `<div class="cart-item animate-in"><span>${i.nombre} x${i.cantidad}</span><span>$${(i.precio*i.cantidad).toFixed(2)}</span></div>`;
+        return `
+            <div class="cart-item animate-in">
+                <div style="flex: 1;">
+                    <span>${i.nombre}</span>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">Cantidad: ${i.cantidad}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-weight: 600;">$${(i.precio*i.cantidad).toFixed(2)}</span>
+                    <button onclick="removeFromCart('${i.id}')" style="background: none; border: none; color: #dc3545; cursor: pointer; font-size: 1.2rem; padding: 0;">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>`;
     }).join('') || '<p style="text-align:center; color:var(--text-muted); padding:20px">Carrito vacío</p>';
     c.innerHTML = items;
     document.getElementById('cartTotal').textContent = `$${total.toFixed(2)}`;
@@ -356,12 +426,58 @@ function showInvoice(f) {
     if (!details || !modal) return;
     
     const total = f.items.reduce((a, b) => a + (b.precio * b.cantidad), 0);
+    const fecha = new Date(f.fecha).toLocaleDateString('es-AR', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
     details.innerHTML = `
-        <p style="margin-bottom:15px; animation: slideUp 0.4s ease-out"><strong>Cliente:</strong> ${f.cliente.nombre_completo}</p>
-        <div style="text-align:left; border-top:1px solid #eee; padding-top:10px; margin-bottom:15px">
-            ${f.items.map((i, idx) => `<div style="display:flex; justify-content:space-between; animation: slideUp ${0.4 + (idx * 0.05)}s ease-out"><span>${i.nombre} x${i.cantidad}</span><span>$${(i.precio*i.cantidad).toFixed(2)}</span></div>`).join('')}
+        <div style="background: linear-gradient(135deg, #f26522, #ff8c42); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; animation: slideDown 0.4s ease-out">
+            <h2 style="margin: 0 0 10px 0; font-size: 1.3rem">Ferretería Pro</h2>
+            <p style="margin: 5px 0; font-size: 0.9rem">Factura de Venta</p>
+            <p style="margin: 5px 0; font-size: 0.85rem">${fecha}</p>
         </div>
-        <h3 style="color:var(--primary); font-size:1.6rem; animation: scaleIn 0.5s ease-out">TOTAL: $${total.toFixed(2)}</h3>
+        
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; animation: slideUp 0.4s ease-out">
+            <p style="margin: 5px 0; font-weight: 600"><strong>Cliente:</strong> ${f.cliente.nombre_completo}</p>
+            ${f.cliente.email ? `<p style="margin: 5px 0; font-size: 0.9rem"><strong>Email:</strong> ${f.cliente.email}</p>` : ''}
+            ${f.cliente.telefono ? `<p style="margin: 5px 0; font-size: 0.9rem"><strong>Teléfono:</strong> ${f.cliente.telefono}</p>` : ''}
+        </div>
+        
+        <div style="border-top: 2px solid #eee; border-bottom: 2px solid #eee; padding: 15px 0; margin-bottom: 20px">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; font-weight: 600; margin-bottom: 10px; font-size: 0.9rem; color: #666">
+                <span>Producto</span>
+                <span style="text-align: center">Cantidad</span>
+                <span style="text-align: right">Subtotal</span>
+            </div>
+            ${f.items.map((i, idx) => `
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; animation: slideUp ${0.4 + (idx * 0.08)}s ease-out">
+                    <span>${i.nombre}</span>
+                    <span style="text-align: center">${i.cantidad}</span>
+                    <span style="text-align: right; font-weight: 600">$${(i.precio * i.cantidad).toFixed(2)}</span>
+                </div>
+            `).join('')}
+        </div>
+        
+        <div style="background: #e8f4f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; animation: scaleIn 0.5s ease-out">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.95rem">
+                <span>Subtotal:</span>
+                <span>$${total.toFixed(2)}</span>
+            </div>
+            <div style="border-top: 1px solid #bbb; padding-top: 10px">
+                <div style="display: flex; justify-content: space-between; font-size: 1.3rem; font-weight: 700; color: var(--primary)">
+                    <span>TOTAL A PAGAR:</span>
+                    <span>$${total.toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 15px">
+            <i class="bi bi-check-circle"></i> Transacción completada exitosamente
+        </p>
     `;
     modal?.classList.remove('hidden');
 }
