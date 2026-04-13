@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferretería Pro | Sistema de Gestión</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <i class="bi bi-tools logo-icon"></i>
+            <span class="logo-text">Ferretería Pro</span>
+            <button id="toggle-sidebar" class="toggle-btn"><i class="bi bi-list"></i></button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-section="section-inicio">
+                <i class="bi bi-house icon"></i> <span class="nav-text">Inicio</span>
+            </a>
+            
+            <div class="menu-group">
+                <a href="#" class="nav-item has-submenu" data-target="submenu-productos">
+                    <i class="bi bi-box-seam icon"></i> <span class="nav-text">Productos</span>
+                </a>
+                <div id="submenu-productos" class="submenu hidden">
+                    <a href="#" class="submenu-item" data-section="section-inventory"><i class="bi bi-eye"></i> Visualizar</a>
+                    <a href="#" class="submenu-item" data-section="section-add"><i class="bi bi-plus-lg"></i> Registrar</a>
+                </div>
+            </div>
+
+            <div class="menu-group">
+                <a href="#" class="nav-item has-submenu" data-target="submenu-customers">
+                    <i class="bi bi-people icon"></i> <span class="nav-text">Clientes</span>
+                </a>
+                <div id="submenu-customers" class="submenu hidden">
+                    <a href="#" class="submenu-item" data-section="section-customers-list"><i class="bi bi-person-lines-fill"></i> Visualizar</a>
+                    <a href="#" class="submenu-item" data-section="section-customers-add"><i class="bi bi-person-plus"></i> Registrar</a>
+                </div>
+            </div>
+
+            <a href="#" class="nav-item" data-section="section-pos">
+                <i class="bi bi-cart3 icon"></i> <span class="nav-text">Realizar Venta</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-info">
+                <h1 id="current-section-title">Inicio</h1>
+                <p>Gestión integral de inventario y ventas</p>
+            </div>
+            <div class="user-pill">Admin <div class="avatar">A</div></div>
+        </header>
+
+        <!-- SECCIÓN: INICIO -->
+        <section id="section-inicio" class="content-section">
+            <div class="welcome-card card">
+                <h2>¡Bienvenido a Ferretería Pro!</h2>
+                <p>Tu panel de control está listo. Revisa el rendimiento de hoy.</p>
+            </div>
+
+            <div class="date-filters">
+                <label><strong>Filtrar estadísticas:</strong></label>
+                <input type="date" id="date-from">
+                <span>hasta</span>
+                <input type="date" id="date-to">
+                <button id="btn-filter-dates" class="btn-primary" style="width: auto; padding: 0.5rem 1.5rem;">Aplicar</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card card"><i class="bi bi-currency-dollar"></i><div><span>Ventas Mes</span><h3 id="stat-month">0</h3></div></div>
+                <div class="stat-card card"><i class="bi bi-graph-up"></i><div><span>Ventas Año</span><h3 id="stat-year">0</h3></div></div>
+                <div class="stat-card card"><i class="bi bi-star"></i><div><span>Top Producto</span><h3 id="stat-top-p">---</h3></div></div>
+            </div>
+            <div class="charts-container">
+                <div class="chart-box card"><h3>Tendencia de Ventas</h3><canvas id="lineChart"></canvas></div>
+                <div class="chart-box card"><h3>Productos más Vendidos</h3><canvas id="pieChart"></canvas></div>
+                <div class="chart-box card full-width"><h3>Top Clientes (Inversión)</h3><canvas id="barChart"></canvas></div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN: VISUALIZAR PRODUCTOS -->
+        <section id="section-inventory" class="content-section hidden">
+            <div class="section-actions">
+                <h2>Catálogo de Productos</h2>
+                <div class="search-box"><input type="text" id="search-products" placeholder="Buscar por nombre..."></div>
+            </div>
+            <div id="productGrid" class="product-grid"></div>
+        </section>
+
+        <!-- SECCIÓN: REGISTRAR PRODUCTO -->
+        <section id="section-add" class="content-section hidden">
+            <div class="form-container">
+                <div class="card form-card">
+                    <h2 id="product-form-title">Registrar Producto</h2>
+                    <form id="productForm" class="form-grid">
+                        <input type="hidden" name="_id" id="edit-product-id">
+                        <div class="form-group"><label>Nombre</label><input type="text" name="nombre" required></div>
+                        <div class="form-group"><label>Marca</label><input type="text" name="marca" required></div>
+                        <div class="form-group"><label>Precio</label><input type="number" name="precio" step="0.01" required></div>
+                        <div class="form-group"><label>Stock</label><input type="number" name="stock" required></div>
+                        <div class="form-group full-width"><label>URL Imagen</label><input type="url" name="imagen_url"></div>
+                        <div class="form-group full-width"><label>Descripción</label><textarea name="descripcion" rows="2"></textarea></div>
+                        <div class="form-buttons">
+                            <button type="submit" class="btn-primary">Guardar Producto</button>
+                            <button type="button" id="btn-cancel-product" class="btn-secondary hidden">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN: LISTA CLIENTES -->
+        <section id="section-customers-list" class="content-section hidden">
+            <h2>Listado de Clientes</h2>
+            <div id="customerList" class="customer-table card"></div>
+        </section>
+
+        <!-- SECCIÓN: REGISTRAR CLIENTE -->
+        <section id="section-customers-add" class="content-section hidden">
+            <div class="form-container">
+                <div class="card form-card">
+                    <h2 id="customer-form-title">Nuevo Cliente</h2>
+                    <form id="customerForm" class="form-grid">
+                        <input type="hidden" name="_id" id="edit-customer-id">
+                        <div class="form-group"><label>Nombre</label><input type="text" name="nombre_completo" required></div>
+                        <div class="form-group"><label>Email</label><input type="email" name="email" required></div>
+                        <div class="form-group"><label>Teléfono</label><input type="text" name="telefono" required></div>
+                        <div class="form-buttons" style="grid-column: span 2">
+                            <button type="submit" class="btn-primary">Guardar Cliente</button>
+                            <button type="button" id="btn-cancel-customer" class="btn-secondary hidden">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN: POS (VENTA) -->
+        <section id="section-pos" class="content-section hidden">
+            <div class="pos-layout">
+                <div class="pos-products">
+                    <div id="posGrid" class="pos-grid"></div>
+                </div>
+                <div class="pos-sidebar card">
+                    <h3>Carrito de Venta</h3>
+                    <div class="customer-select"><select id="pos-customer-select"></select></div>
+                    <div id="cartItems" class="cart-items"></div>
+                    <div class="total-row"><span>Total:</span> <span id="cartTotal">$0.00</span></div>
+                    <button id="btn-checkout" class="btn-checkout">Finalizar Compra</button>
+                </div>
+            </div>
+        </section>
+
+        <div id="modal-invoice" class="modal hidden"><div class="modal-content card"><h2>Factura</h2><div id="invoice-details"></div><button onclick="closeModal()" class="btn-primary">Cerrar</button></div></div>
+    </main>
+    <script src="app.js"></script>
+</body>
+</html>
